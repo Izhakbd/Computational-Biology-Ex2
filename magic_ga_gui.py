@@ -128,8 +128,12 @@ class MagicSquareGA:
     def crossover(self, p1, p2):
         cut = random.randint(1, self.n * self.n - 2)
         head = p1[:cut]
-        tail = [g for g in p2 if g not in head]
-        return head + tail
+        # Fill the tail with genes from p2 that are not in head from the cut point to the end of p2
+        tail = [g for g in p2[cut:] if g not in head]
+        # Now fill the rest from the *start* of p2 to preserve order
+        remaining = [g for g in p2 if g not in head and g not in tail]
+        # Return a child individual by combining the head and tail segments
+        return head + tail + remaining 
 
     # Mutate an individual by swapping two numbers
     # This mutation is done with a certain probability (mutation_rate)

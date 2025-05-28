@@ -2,11 +2,12 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.ticker import MaxNLocator
 import random
 
 # GA Core
 class MagicSquareGA:
-    def __init__(self, n: int, fitness_func, inheritance_mode=None, mutation_rate=0.3):
+    def __init__(self, n: int, fitness_func, inheritance_mode=None, mutation_rate=0.2):
         self.n = n # size of the matrix
         self.M = n * (n ** 2 + 1) // 2  # the sum of each row, column, and diagonal for a magic square
         self.pop_size = 100 # population size
@@ -144,43 +145,50 @@ class MagicSquareGA:
 
     # Optimize an individual by trying all possible 2-cell swaps
     # This method iterates through all pairs of cells in the individual and swaps them
-    # If the swap results in a lower fitness score, it updates the individual
+    # If the swap results in a lower fitness score, it updates the individual and breaks the loop
     # This is a local search optimization step to improve the individual
     def optimize(self, individual):
-        
-        # Randomly swap two cells in the individual multiple times to try to reduce fitness, iterating n times
-        optimizing_individual = individual[:]  
+
+        """Try all possible 2-cell swaps in the individual to reduce fitness and break if found better."""
+        best_fitness = self.fitness_func(individual) #initial fitness of the individual
         temp_optimizing_individual = individual[:]
-       
-        for _ in range(self.n):
-            temp = temp_optimizing_individual[:]  # Create a copy of the individual to work with
-            i = random.randint(0, self.n * self.n - 1)  # Randomly select a cell index
-            j = random.randint(0, self.n * self.n - 1)  # Randomly select another cell index
-            while i == j:  # Ensure the two indices are different
-                j = random.randint(0, self.n * self.n - 1)  # Re-select if they are the same
-            temp[i], temp[j] = temp[j], temp[i]
-            if self.fitness_func(temp) < self.fitness_func(temp_optimizing_individual):
-                temp_optimizing_individual = temp[:]  # Update the temp optimizing individual if fitness improved
-                optimizing_individual = temp[:]
+        optimizing_individual = individual[:]
+
+        number_of_cells = self.n * self.n
+        
+        for i in range(number_of_cells):
+            for j in range(i + 1, number_of_cells):
+                temp = temp_optimizing_individual[:] # Create a copy of the individual
+                temp[i], temp[j] = temp[j], temp[i] # Swap the two cells in the copy
+                fit = self.fitness_func(temp) # Calculate fitness of the modified individual
+                if fit < best_fitness:
+                    best_fitness = fit
+                    temp_optimizing_individual = temp[:] # Assign the modified individual to temp_optimizing_individual for next iteration
+                    optimizing_individual = temp_optimizing_individual[:]
+                    break  # Break the inner loop if found a better fitness
         return optimizing_individual
+        
+        """Choose randomly two indexes and swap their value in the individual in order to try reduce individual fitness, iterating at most 100 times"""
+        """This is the third optimization method i describe in report."""
 
-        #"""Try all possible 2-cell swaps in the individual to reduce fitness."""
-        # best_fitness = self.fitness_func(individual) #initial fitness of the individual
+        # optimizing_individual = individual[:]  
         # temp_optimizing_individual = individual[:]
-        # optimizing_individual = individual[:]
-
-        # number_of_cells = self.n * self.n
-        # for k in range(self.n):
-        #     for i in range(number_of_cells):
-        #         for j in range(i + 1, number_of_cells):
-        #             temp = temp_optimizing_individual[:] # Create a copy of the individual
-        #             temp[i], temp[j] = temp[j], temp[i] # Swap the two cells in the copy
-        #             fit = self.fitness_func(temp) # Calculate fitness of the modified individual
-        #             if fit < best_fitness:
-        #                 best_fitness = fit
-        #                 temp_optimizing_individual = temp[:] # Assign the modified individual to temp_optimizing_individual for next iteration
-        #                 optimizing_individual = temp_optimizing_individual[:]
+        # improvement_count = 0  # Count how many times we improve the individual
+        # for _ in range(100):
+        #     temp = temp_optimizing_individual[:]  # Create a copy of the individual to work with
+        #     i = random.randint(0, self.n * self.n - 1)  # Randomly select a cell index
+        #     j = random.randint(0, self.n * self.n - 1)  # Randomly select another cell index
+        #     while i == j:  # Ensure the two indices are different
+        #         j = random.randint(0, self.n * self.n - 1)  # Re-select if they are the same
+        #     temp[i], temp[j] = temp[j], temp[i]
+        #     if self.fitness_func(temp) < self.fitness_func(temp_optimizing_individual):
+        #         temp_optimizing_individual = temp[:]  # Update the temp optimizing individual if fitness improved
+        #         optimizing_individual = temp[:]
+        #         improvement_count += 1  # Increment the improvement count
+        #     if improvement_count >= self.n:
+        #         break   
         # return optimizing_individual
+        
 
     # create a new generation of individuals
     # This method selects parents, performs crossover to create children, and applies mutation on part of the population.
@@ -192,7 +200,7 @@ class MagicSquareGA:
             optimized_population = [self.optimize(ind) for ind in self.population]
         elif mode == "Lamarckian":
             optimized_population = [self.optimize(ind) for ind in self.population]
-            self.population = optimized_population[:]  # Make the optimized population be the current population (an self.population attribute).
+            self.population = optimized_population[:]  # Make the optimized population be the current population for crossover (an self.population attribute).
 
         current_fitnesses = [self.fitness_func(ind) for ind in self.population]
         worst_fitness = max(current_fitnesses)
@@ -233,7 +241,7 @@ class MagicSquareGA:
                 self.no_improvement_counter = 0  # Reset counter
 
         # Keep track of fitness history for plotting.
-        self.best_fitness_history.append(best_fitness) 
+        self.best_fitness_history.append(self.best_fitness) 
         self.worst_fitness_history.append(worst_fitness)
         self.avg_fitness_history.append(avg_fitness)
 
@@ -304,23 +312,26 @@ class MagicSquareApp(tk.Tk):
     def start_algorithm(self):
         n = int(self.n_var.get())
         
-        # Determine the fitness function based on matrix size only if n = 4 or n = 8
-        if n == 4 or n == 8:
-            answer = messagebox.askquestion("Fitness Type", "Are you want to find most perfect magic square?")
-            if answer == 'yes':
-                fitness_func = lambda ind: self.ga.most_perfect_magic_square_fitness(ind)
-                is_most_perfect = True
+        if self.ga is None:
+            # Determine the fitness function based on matrix size only if n = 4 or n = 8
+            if n == 4 or n == 8:
+                answer = messagebox.askquestion("Fitness Type", "Are you want to find most perfect magic square?")
+                if answer == 'yes':
+                    fitness_func = lambda ind: self.ga.most_perfect_magic_square_fitness(ind)
+                    is_most_perfect = True
+                else:
+                    fitness_func = lambda ind: self.ga.regular_magic_square_fitness(ind)
+                    is_most_perfect = False
             else:
                 fitness_func = lambda ind: self.ga.regular_magic_square_fitness(ind)
                 is_most_perfect = False
-        else:
-            fitness_func = lambda ind: self.ga.regular_magic_square_fitness(ind)
-            is_most_perfect = False
 
-        # Initialize the GA with the selected parameters
-        self.ga = MagicSquareGA(n=n, fitness_func=fitness_func, inheritance_mode=self.inheritance_mode.get()) 
-        self.ga.is_most_perfect = is_most_perfect  # <-- simple custom attribute
-        self.ga.initialize()
+            # Initialize the GA with the selected parameters
+            self.ga = MagicSquareGA(n=n, fitness_func=fitness_func, inheritance_mode=self.inheritance_mode.get()) 
+            self.ga.is_most_perfect = is_most_perfect  # <-- simple custom attribute
+            self.ga.initialize()
+        
+        # If the GA stop and i want to run it again from the point i stoped only this line will be run
         self.running = True
         self.after(100, self.run_step)
 
@@ -369,6 +380,8 @@ class MagicSquareApp(tk.Tk):
         self.ax.set_title("Fitness Over Generations")
         self.ax.set_xlabel("Generation")
         self.ax.set_ylabel("Fitness")
+        # Force integer ticks
+        self.ax.xaxis.set_major_locator(MaxNLocator(integer=True)) 
         self.ax.legend()
         self.canvas.draw()
 
@@ -382,6 +395,7 @@ class MagicSquareApp(tk.Tk):
     # This clears the log and plot, and resets the GA
     def reset_algorithm(self):
         self.running = False
+        self.ga = None  # clear existing GA state
         self.log_box.delete(1.0, tk.END)
         self.ax.clear()
         self.canvas.draw()

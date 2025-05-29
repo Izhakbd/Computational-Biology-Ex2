@@ -7,7 +7,8 @@ import random
 
 # GA Core
 class MagicSquareGA:
-    def __init__(self, n: int, fitness_func, inheritance_mode=None, mutation_rate=0.2):
+    def __init__(self, n: int, fitness_func, inheritance_mode=None, mutation_rate=0.2, use_elitism = False, elitism_rate = 0.2):
+        
         self.n = n # size of the matrix
         self.M = n * (n ** 2 + 1) // 2  # the sum of each row, column, and diagonal for a magic square
         self.pop_size = 100 # population size
@@ -23,7 +24,9 @@ class MagicSquareGA:
         self.no_improvement_counter = 0
         self.last_best_fitness = None
         self.inheritance_mode = inheritance_mode  # inheritance mode: None, Darwinian, or Lamarckian
-
+        self.use_elitism = use_elitism
+        self.elitism_rate = elitism_rate  # detrermine how many of the best individuals to carry over to the next generation
+        
 
     # Generate a random individual to initialize the population
     # An individual is a flat list of numbers from 1 to n^2
@@ -34,9 +37,8 @@ class MagicSquareGA:
     
     # Initialize the algorithm with a random population, this method run only once at the algorithm start
     def initialize(self):
-        # Initialize the population with random individuals
+      # Initialize the population with random individuals
         self.population = [self.random_individual() for _ in range(self.pop_size)]
-        
         # Calculate initial fitness for the population
         current_fitnesses = [self.fitness_func(ind) for ind in self.population]
         worst_fitness = max(current_fitnesses)
@@ -115,9 +117,7 @@ class MagicSquareGA:
     def get_worst_N_individuals_by_fitness(self, N):
         """Return the N individuals with the highest (worst) fitness in the current population."""
         return sorted(self.population, key=self.fitness_func, reverse=True)[:N]
-
-
-
+    
     # Selection based on inverse fitness - lower fitness means higher chance of selection
     def select_parents(self,population):
         weights = [1 / (1 + self.fitness_func(ind)) for ind in population]
@@ -205,9 +205,7 @@ class MagicSquareGA:
         current_fitnesses = [self.fitness_func(ind) for ind in self.population]
         worst_fitness = max(current_fitnesses)
         avg_fitness = sum(current_fitnesses) / len(current_fitnesses)
-        best_fitness = min(current_fitnesses)
         new_pop = []
-        worst_N_individuals = self.get_worst_N_individuals_by_fitness(self.n) # Get the N worst individuals in the current population by fitness
 
         # Apply mutation to fixed number of individuals determined by mutation_rate
         num_mutations = int(self.pop_size * self.mutation_rate)
@@ -246,10 +244,26 @@ class MagicSquareGA:
         self.avg_fitness_history.append(avg_fitness)
 
         # Generate new generation from original or optimized population depending on inheritance mode
-        for _ in range(self.pop_size):
-            p1, p2 = self.select_parents(self.population) # Select two parents from population based on their fitness
-            child = self.crossover(p1, p2)  # Create a child by crossing over the two parents
-            new_pop.append(child) # Add the child to the new generation
+        if self.use_elitism:
+            # Step 1: Copy top elite_count individuals unchanged
+            elite_count = int(self.pop_size * self.elitism_rate)
+            elites = sorted(self.population, key=self.fitness_func)[:elite_count]
+            new_pop.extend(elites)
+
+            # Step 2: Fill the rest of the population using selection/crossover/mutation
+            for _ in range(self.pop_size - elite_count):
+                p1, p2 = self.select_parents(self.population)
+                child = self.crossover(p1, p2)
+                self.mutate(child)
+                new_pop.append(child)
+
+        else:
+            # No elitism: Generate the whole population from scratch in croosover
+            for _ in range(self.pop_size):
+                p1, p2 = self.select_parents(self.population)
+                child = self.crossover(p1, p2)
+                self.mutate(child)
+                new_pop.append(child)
         
         self.population = new_pop # Update population property to the new generation who created.
         self.generation += 1
@@ -300,8 +314,16 @@ class MagicSquareApp(tk.Tk):
         self.inheritance_combo.pack(pady=5)
 
 
+        # Elitism checkbox
+        self.elitism_var = tk.BooleanVar(value=False)
+        self.elitism_check = ttk.Checkbutton(control_frame, text="Use Elitism", variable=self.elitism_var)
+        self.elitism_check.pack(pady=5)
+    
+
+        # Log box for output - present the current best individual and fitness
         self.log_box = tk.Text(control_frame, height=25, width=40)
         self.log_box.pack(pady=10)
+
 
         # Plot setup
         self.fig, self.ax = plt.subplots(figsize=(5, 5))
@@ -326,8 +348,9 @@ class MagicSquareApp(tk.Tk):
                 fitness_func = lambda ind: self.ga.regular_magic_square_fitness(ind)
                 is_most_perfect = False
 
+            
             # Initialize the GA with the selected parameters
-            self.ga = MagicSquareGA(n=n, fitness_func=fitness_func, inheritance_mode=self.inheritance_mode.get()) 
+            self.ga = MagicSquareGA(n=n, fitness_func=fitness_func, inheritance_mode=self.inheritance_mode.get(),use_elitism=self.elitism_var.get()) 
             self.ga.is_most_perfect = is_most_perfect  # <-- simple custom attribute
             self.ga.initialize()
         
@@ -361,6 +384,10 @@ class MagicSquareApp(tk.Tk):
         # If the algorithm is running in most perfect magic square mode, add a note to the log
         if getattr(self.ga, 'is_most_perfect', False):
             self.log_box.insert(tk.END, "\nMost Perfect Magic Square Mode\n")
+        # If the algorithm is running in elitism mode, add a note to the log
+        if getattr(self.ga, 'use_elitism', False):
+            self.log_box.insert(tk.END, "\nUsing Elitism\n")
+        
 
 
 

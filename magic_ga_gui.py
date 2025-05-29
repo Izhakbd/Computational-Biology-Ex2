@@ -18,6 +18,7 @@ class MagicSquareGA:
         self.best = None # best individual
         self.best_fitness = float("inf")  # best fitness
         self.generation = 0 # current generation
+        self.fitness_call_count = 0 # count how many times the fitness function was called
         self.best_fitness_history = [] # best fitness history for plotting over generations
         self.worst_fitness_history = [] # worst fitness history for plotting over generations
         self.avg_fitness_history = [] # average fitness history for plotting over generations
@@ -50,6 +51,7 @@ class MagicSquareGA:
         self.worst_fitness = worst_fitness
         self.avg_fitness = avg_fitness
         self.generation = 0
+        self.fitness_call_count = 0 # Reset fitness call count
         self.best_fitness_history = [self.best_fitness] # Add initial best fitness to history
         self.worst_fitness_history = [self.worst_fitness] # Add initial worst fitness to history
         self.avg_fitness_history = [self.avg_fitness] # Add initial average fitness to history
@@ -59,6 +61,7 @@ class MagicSquareGA:
     # Fitness function for regular magic square candidates (N=3 or 5)
     def regular_magic_square_fitness(self, individual):
         """Calculates the fitness score of a regular magic square candidate (N=3 or 5)."""
+        self.fitness_call_count += 1 # Increment the fitness call count each time the fitness function is called
         n = self.n # size of the matrix
         magic_sum = self.M # the sum of each row, column, and diagonal for a magic square
         matrix = [individual[i * n:(i + 1) * n] for i in range(n)] # convert flat list to array of arrays which elements are rows of the matrix.
@@ -87,6 +90,7 @@ class MagicSquareGA:
     # This fitness function checks for 2x2 sub-squares and diagonal symmetry in addition to the regular fitness checks
     def most_perfect_magic_square_fitness(self, individual):
         """Fitness for most-perfect magic square (N=4 only). Includes 2×2 sub-squares and diagonal pair symmetry."""
+        self.fitness_call_count += 1 # Increment the fitness call count each time the fitness function is called
         n = self.n
         half_sum = n * n + 1  # s = n² + 1
         matrix = [individual[i * n:(i + 1) * n] for i in range(n)]
@@ -237,6 +241,7 @@ class MagicSquareGA:
                 self.mutation_rate = min(self.mutation_rate, 0.8) # max mutation rate is 0.8
                 print(f"⚠️ No improvement for 20 generations — mutation rate increased to {self.mutation_rate:.4f}")
                 self.no_improvement_counter = 0  # Reset counter
+                
 
         # Keep track of fitness history for plotting.
         self.best_fitness_history.append(self.best_fitness) 
@@ -373,6 +378,7 @@ class MagicSquareApp(tk.Tk):
     # Update the log output
     def update_log(self):
         self.log_box.delete(1.0, tk.END)
+        self.log_box.insert(tk.END, f"Fitness Function Calls: {self.ga.fitness_call_count}\n\n")
         self.log_box.insert(tk.END, f"Generation: {self.ga.generation}\n")
         self.log_box.insert(tk.END, f"Best Fitness: {self.ga.best_fitness}\n")
         
@@ -387,6 +393,9 @@ class MagicSquareApp(tk.Tk):
         # If the algorithm is running in elitism mode, add a note to the log
         if getattr(self.ga, 'use_elitism', False):
             self.log_box.insert(tk.END, "\nUsing Elitism\n")
+
+       
+
         
 
 

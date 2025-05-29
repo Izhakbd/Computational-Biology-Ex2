@@ -13,6 +13,7 @@ class MagicSquareGA:
         self.M = n * (n ** 2 + 1) // 2  # the sum of each row, column, and diagonal for a magic square
         self.pop_size = 100 # population size
         self.mutation_rate = mutation_rate # mutation rate
+        self.num_of_mutations = 1 # number of mutations to apply to each individual
         self.fitness_func = fitness_func # fitness function
         self.population = [] # current population
         self.best = None # best individual
@@ -143,9 +144,10 @@ class MagicSquareGA:
     # Mutate an individual by swapping two numbers
     # This mutation is done with a certain probability (mutation_rate)
     #not all children are mutated
-    def mutate(self, ind):
-        i, j = random.sample(range(self.n * self.n), 2)
-        ind[i], ind[j] = ind[j], ind[i]
+    def mutate(self, ind, num_mutations=1):
+        for _ in range(num_mutations):
+            i, j = random.sample(range(self.n * self.n), 2)
+            ind[i], ind[j] = ind[j], ind[i]
 
     # Optimize an individual by trying all possible 2-cell swaps
     # This method iterates through all pairs of cells in the individual and swaps them
@@ -215,7 +217,7 @@ class MagicSquareGA:
         num_mutations = int(self.pop_size * self.mutation_rate)
         for _ in range(num_mutations):
             individual = random.choice(self.population)  # Select a random individual from the population
-            self.mutate(individual)
+            self.mutate(individual, self.num_of_mutations)
         
         if mode == "Darwinian":
             current_best = min(optimized_population, key=self.fitness_func) # The best individual in the current population based on optimized population
@@ -238,6 +240,7 @@ class MagicSquareGA:
             # If no improvement in 20 generations, increase mutation rate
             if self.no_improvement_counter >= 20:
                 self.mutation_rate += 0.1  # Increase by 0.1%
+                self.num_of_mutations = min(self.num_of_mutations + 1, (self.n * self.n) // 2)  # Increase the number of mutations to apply to each individual
                 self.mutation_rate = min(self.mutation_rate, 0.8) # max mutation rate is 0.8
                 print(f"⚠️ No improvement for 20 generations — mutation rate increased to {self.mutation_rate:.4f}")
                 self.no_improvement_counter = 0  # Reset counter
@@ -259,7 +262,7 @@ class MagicSquareGA:
             for _ in range(self.pop_size - elite_count):
                 p1, p2 = self.select_parents(self.population)
                 child = self.crossover(p1, p2)
-                self.mutate(child)
+                self.mutate(child, self.num_of_mutations)
                 new_pop.append(child)
 
         else:
@@ -267,9 +270,9 @@ class MagicSquareGA:
             for _ in range(self.pop_size):
                 p1, p2 = self.select_parents(self.population)
                 child = self.crossover(p1, p2)
-                self.mutate(child)
+                self.mutate(child, self.num_of_mutations)
                 new_pop.append(child)
-        
+
         self.population = new_pop # Update population property to the new generation who created.
         self.generation += 1
 

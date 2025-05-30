@@ -118,11 +118,16 @@ class MagicSquareGA:
 
         return mpms_fitness
 
+    # Get the N best individual in the current population by fitness
+    def get_best_N_individuals_by_fitness(self, N):
+        """Return the N individuals with the highest (worst) fitness in the current population."""
+        return sorted(self.population, key=self.fitness_func)[:N]
+
     # Get the N worst individual in the current population by fitness
     def get_worst_N_individuals_by_fitness(self, N):
         """Return the N individuals with the highest (worst) fitness in the current population."""
         return sorted(self.population, key=self.fitness_func, reverse=True)[:N]
-    
+
     # Selection based on inverse fitness - lower fitness means higher chance of selection
     def select_parents(self,population):
         weights = [1 / (1 + self.fitness_func(ind)) for ind in population]
@@ -238,16 +243,26 @@ class MagicSquareGA:
         else:
             self.no_improvement_counter += 1
             # If no improvement in 20 generations, increase mutation rate
-            if self.no_improvement_counter >= 20:
-                self.mutation_rate += 0.1  # Increase by 0.1%
-                self.num_of_mutations = min(self.num_of_mutations + 1, (self.n * self.n) // 2)  # Increase the number of mutations to apply to each individual
-                self.mutation_rate = min(self.mutation_rate, 0.8) # max mutation rate is 0.8
-                print(f"⚠️ No improvement for 20 generations — mutation rate increased to {self.mutation_rate:.4f}")
+            if self.no_improvement_counter >= 20:  
+                self.num_of_mutations =  2  # Increase the number of mutations to apply to each individual (2 instead of 1)
+                self.mutation_rate = 0.4  # Increase to 40% of the population
+                self.elitism_rate = 0.3 # Increase to 30% of the population
+                print(f"⚠️ No improvement for 20 generations — mutation rate increased to {self.mutation_rate:.4f}")            
                 self.no_improvement_counter = 0  # Reset counter
-                
+                self.amplification_counter = 0  # To limit the generation's number of amplification value.
+
+        # Reset rates after 20 generations of amplification
+        if hasattr(self, 'amplification_counter'):
+            self.amplification_counter += 1
+            if self.amplification_counter >= 20:
+                self.mutation_rate = 0.2
+                self.elitism_rate = 0.2
+                self.num_of_mutations = 1
+                del self.amplification_counter
+                print(f"✅ Reset mutation_rate, elitism_rate, and num_of_mutations to original values.")
 
         # Keep track of fitness history for plotting.
-        self.best_fitness_history.append(self.best_fitness) 
+        self.best_fitness_history.append(self.best_fitness)
         self.worst_fitness_history.append(worst_fitness)
         self.avg_fitness_history.append(avg_fitness)
 
@@ -262,7 +277,6 @@ class MagicSquareGA:
             for _ in range(self.pop_size - elite_count):
                 p1, p2 = self.select_parents(self.population)
                 child = self.crossover(p1, p2)
-                self.mutate(child, self.num_of_mutations)
                 new_pop.append(child)
 
         else:
@@ -270,7 +284,6 @@ class MagicSquareGA:
             for _ in range(self.pop_size):
                 p1, p2 = self.select_parents(self.population)
                 child = self.crossover(p1, p2)
-                self.mutate(child, self.num_of_mutations)
                 new_pop.append(child)
 
         self.population = new_pop # Update population property to the new generation who created.

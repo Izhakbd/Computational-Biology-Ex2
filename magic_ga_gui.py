@@ -258,6 +258,7 @@ class MagicSquareGA:
                 self.mutation_rate = 0.2
                 self.elitism_rate = 0.2
                 self.num_of_mutations = 1
+                self.no_improvement_counter = 0
                 del self.amplification_counter
                 print(f"✅ Reset mutation_rate, elitism_rate, and num_of_mutations to original values.")
 
@@ -289,7 +290,7 @@ class MagicSquareGA:
         self.population = new_pop # Update population property to the new generation who created.
         self.generation += 1
 
-        return self.best_fitness == 0 or self.generation >= 500
+        return self.best_fitness == 0 or self.generation >= 1000
 
 # GUI Class
 class MagicSquareApp(tk.Tk):

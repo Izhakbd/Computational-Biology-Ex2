@@ -1,5 +1,9 @@
 # Computational-Biology-Ex2
 
+The **executable file** – magic_ga_gui.exe appears under the dist folder. 
+
+To run, download the magic_ga_gui.exe, open the terminal in the path where the executable file is located and type the command ./magic_ga_gui.exe (there are operating systems where /. is not needed, but only magic_ga_gui.exe)
+
 # Instructions:
 
 First, select the matrix size from a select menu (the suggested sizes are 3,5,4,8 only).
